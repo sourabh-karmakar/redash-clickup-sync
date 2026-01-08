@@ -16,14 +16,14 @@ data = response.json()["query_result"]["data"]["rows"]
 # Example: Create one ClickUp task per row
 for row in data:
     task_payload = {
-        "name": f"Metric Alert: {row['metric_name']}",
-        "description": f"Value: {row['metric_value']}",
+        "name": f"Metric Alert: {row['Add Unleash MID']}",
+        "description": f"Value: {row['id']}",
         "status": "to do"
     }
 
-    clickup_url = f"https://api.clickup.com/api/v2/list/901412176234/task"
+    clickup_url = f"https://api.clickup.com"
     headers = {
-        "Authorization": CLICKUP_TOKEN,
+        "Authorization": 9I9UBYDQ12D8XEJXW0NSSCVE0SXLDFZA879H9PZ9XDA7QS6XFV8R79HE8X032AI1,
         "Content-Type": "application/json"
     }
 
