@@ -1,0 +1,31 @@
+name: Redash to ClickUp Sync
+
+on:
+  schedule:
+    - cron: "0 9 * * *"  # Runs daily at 9 AM UTC
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Run sync
+        env:
+          REDASH_URL: ${{ secrets.REDASH_URL }}
+          REDASH_API_KEY: ${{ secrets.REDASH_API_KEY }}
+          QUERY_ID: ${{ secrets.QUERY_ID }}
+          CLICKUP_TOKEN: ${{ secrets.CLICKUP_TOKEN }}
+          CLICKUP_LIST_ID: ${{ secrets.CLICKUP_LIST_ID }}
+        run: python scripts/sync.py
