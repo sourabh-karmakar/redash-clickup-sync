@@ -16,8 +16,8 @@ data = response.json()["query_result"]["data"]["rows"]
 # Example: Create one ClickUp task per row
 for row in data:
     task_payload = {
-        "name": f"Metric Alert: {row['metric_name']}",
-        "description": f"Value: {row['metric_value']}",
+        "name": f"Metric Alert: {row['name']}",
+        "description": f"Value: {row['id']}",
         "status": "to do"
     }
 
