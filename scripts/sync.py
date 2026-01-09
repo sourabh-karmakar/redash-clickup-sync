@@ -63,11 +63,11 @@ for index, row in enumerate(rows, start=1):
     log(f"➡️ Processing row {index}: {row}")
 
     metric_name = row.get("metric_name") or row.get("name") or "Unknown Metric"
-    metric_value = row.get("metric_value") or row.get("value") or "N/A"
+    metric_value = row.get("metric_value") or row.get("id") or "N/A"
 
     task_payload = {
-        "name": f"Metric Alert: {metric_name}",
-        "description": f"Value: {metric_value}",
+        "name": f"Uleash Add: {metric_name}",
+        "description": f"MID: {metric_value}",
         "status": "to do"
     }
 
