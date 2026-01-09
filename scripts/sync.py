@@ -23,7 +23,7 @@ for row in data:
 
     clickup_url = f"https://api.clickup.com"
     headers = {
-        "Authorization": 9I9UBYDQ12D8XEJXW0NSSCVE0SXLDFZA879H9PZ9XDA7QS6XFV8R79HE8X032AI1,
+        "Authorization": CLICKUP_TOKEN,
         "Content-Type": "application/json"
     }
 
