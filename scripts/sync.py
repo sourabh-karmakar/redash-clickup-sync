@@ -89,6 +89,6 @@ summary = (
 log("🎉 Script completed")
 
 send_slack(
-    "✅ Redash query run completed",
+    "@sathwik.rai @Rahul Manglik Please add these below MIDs for checkout 3.0",
     summary
 )
