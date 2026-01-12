@@ -1,14 +1,36 @@
 import requests
 import os
 import sys
-import json
+from datetime import datetime
+
+logs = []
 
 def log(msg):
-    print(f"[LOG] {msg}", flush=True)
+    line = f"[LOG] {msg}"
+    print(line, flush=True)
+    logs.append(line)
 
 def error(msg):
-    print(f"[ERROR] {msg}", flush=True)
+    line = f"[ERROR] {msg}"
+    print(line, flush=True)
+    logs.append(line)
+    send_slack("❌ Redash query run FAILED", "\n".join(logs))
     sys.exit(1)
+
+def send_slack(title, message):
+    webhook = os.environ.get("SLACK_WEBHOOK_URL")
+    if not webhook:
+        print("[WARN] Slack webhook not configured", flush=True)
+        return
+
+    payload = {
+        "text": f"*{title}*\n```{message[-3500:]}```"
+    }
+
+    try:
+        requests.post(webhook, json=payload, timeout=10)
+    except Exception as e:
+        print(f"[WARN] Failed to send Slack message: {e}", flush=True)
 
 log("🚀 Script started")
 
@@ -17,8 +39,6 @@ try:
     REDASH_URL = os.environ["REDASH_URL"]
     REDASH_API_KEY = os.environ["REDASH_API_KEY"]
     QUERY_ID = os.environ["QUERY_ID"]
-    CLICKUP_TOKEN = os.environ["CLICKUP_TOKEN"]
-    CLICKUP_LIST_ID = os.environ["CLICKUP_LIST_ID"]
 except KeyError as e:
     error(f"Missing environment variable: {e}")
 
@@ -26,7 +46,7 @@ log("✅ Environment variables loaded")
 
 # --- Fetch Redash data ---
 redash_api = f"{REDASH_URL}/api/queries/{QUERY_ID}/results.json?api_key={REDASH_API_KEY}"
-log(f"Fetching Redash data from: {redash_api}")
+log("Fetching Redash data")
 
 try:
     redash_response = requests.get(redash_api, timeout=30)
@@ -35,60 +55,40 @@ except Exception as e:
     error(f"Redash API request failed: {e}")
 
 if redash_response.status_code != 200:
-    error(f"Redash API returned non-200 response: {redash_response.text}")
+    error(f"Redash API error: {redash_response.text}")
 
 try:
-    redash_json = redash_response.json()
-    rows = redash_json["query_result"]["data"]["rows"]
+    rows = redash_response.json()["query_result"]["data"]["rows"]
 except Exception as e:
-    error(f"Failed to parse Redash response JSON: {e}")
+    error(f"Failed parsing Redash response: {e}")
 
-log(f"📊 Redash rows fetched: {len(rows)}")
+log(f"📊 Rows fetched: {len(rows)}")
 
+# --- If no data ---
 if not rows:
-    log("⚠️ No data returned from Redash — exiting safely")
+    log("⚠️ No data returned from Redash")
+    send_slack(
+        "⚠️ Redash query completed (no data)",
+        "\n".join(logs)
+    )
     sys.exit(0)
 
-# --- ClickUp setup ---
-clickup_url = f"https://api.clickup.com/api/v2/list/{CLICKUP_LIST_ID}/task"
-headers = {
-    "Authorization": CLICKUP_TOKEN,
-    "Content-Type": "application/json"
-}
+# --- Build Slack message body ---
+message_lines = []
+for idx, row in enumerate(rows, start=1):
+    message_lines.append(f"{idx}. {row}")
 
-log(f"ClickUp task creation URL: {clickup_url}")
+rows_text = "\n".join(message_lines)
 
-# --- Process rows ---
-for index, row in enumerate(rows, start=1):
-    log(f"➡️ Processing row {index}: {row}")
+summary = (
+    f"Run Time: {datetime.utcnow().isoformat()} UTC\n"
+    f"Rows fetched: {len(rows)}\n\n"
+    f"Data:\n{rows_text}"
+)
 
-    metric_name = row.get("metric_name") or row.get("name") or "Unknown Metric"
-    metric_value = row.get("metric_value") or row.get("id") or "N/A"
+log("🎉 Script completed")
 
-    task_payload = {
-        "name": f"Uleash Add: {metric_name}",
-        "description": f"MID: {metric_value}",
-        "status": "to do"
-    }
-
-    log(f"📦 Task payload: {json.dumps(task_payload)}")
-
-    try:
-        response = requests.post(
-            clickup_url,
-            headers=headers,
-            json=task_payload,
-            timeout=30
-        )
-    except Exception as e:
-        error(f"ClickUp API request failed: {e}")
-
-    log(f"ClickUp response status: {response.status_code}")
-    log(f"ClickUp response body: {response.text}")
-
-    if response.status_code not in [200, 201]:
-        log("❌ Task creation failed for this row — continuing")
-    else:
-        log("✅ Task successfully created")
-
-log("🎉 Script completed successfully")
+send_slack(
+    "✅ Redash query run completed",
+    summary
+)
