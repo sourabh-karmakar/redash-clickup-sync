@@ -46,48 +46,31 @@ log("✅ Environment variables loaded")
 
 # --- Fetch Redash data ---
 
-# --- Trigger Redash refresh ---
-refresh_url = f"{REDASH_URL}/api/queries/{QUERY_ID}/refresh"
-headers = {"Authorization": f"Key {REDASH_API_KEY}"}
+# --- Fetch Redash query results (cached) ---
+redash_api = (
+    f"{REDASH_URL}/api/queries/{QUERY_ID}/results.json"
+    f"?api_key={REDASH_API_KEY}"
+)
 
-log("Triggering Redash query refresh")
+log("📡 Fetching Redash query results")
 
 try:
-    refresh_resp = requests.post(refresh_url, headers=headers, timeout=30)
-    refresh_resp.raise_for_status()
+    response = requests.get(redash_api, timeout=30)
+    log(f"Redash response status: {response.status_code}")
 except Exception as e:
-    error(f"Failed to refresh Redash query: {e}")
+    error(f"Redash API request failed: {e}")
 
-job = refresh_resp.json()["job"]
-job_id = job["id"]
+if response.status_code != 200:
+    error(f"Redash API error: {response.text}")
 
-log(f"Refresh job started: {job_id}")
+try:
+    data = response.json()
+    rows = data["query_result"]["data"]["rows"]
+except Exception as e:
+    error(f"Failed parsing Redash response: {e}")
 
-# --- Poll for result ---
-result = None
-for _ in range(10):
-    job_status = requests.get(
-        f"{REDASH_URL}/api/jobs/{job_id}",
-        headers=headers,
-        timeout=10
-    ).json()
+log(f"📊 Rows fetched from Redash: {len(rows)}")
 
-    if job_status["job"]["status"] == 3:  # SUCCESS
-        result = job_status["job"]["query_result_id"]
-        break
-
-    log("Waiting for query to finish...")
-    time.sleep(5)
-
-if not result:
-    error("Redash query did not finish in time")
-
-# --- Fetch latest results ---
-result_url = f"{REDASH_URL}/api/query_results/{result}.json"
-log("Fetching fresh Redash results")
-
-rows = requests.get(result_url, headers=headers, timeout=30) \
-               .json()["query_result"]["data"]["rows"]
 
 
 # --- Build Slack message body ---
