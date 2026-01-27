@@ -69,7 +69,19 @@ try:
 except Exception as e:
     error(f"Failed parsing Redash response: {e}")
 
-log(f"📊 Rows fetched from Redash: {len(rows)}")
+log(f"📊 Rows fetched: {len(rows)}")
+
+# Expecting a single-row result with `ids`
+ids = None
+if rows and isinstance(rows, list):
+    ids = rows[0].get("ids")
+
+if not ids:
+    log("⚠️ No new merchant records found. Skipping execution.")
+    sys.exit(0)
+
+log(f"✅ New merchant IDs detected: {ids}")
+
 
 
 
